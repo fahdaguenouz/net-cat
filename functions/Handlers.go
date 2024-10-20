@@ -18,14 +18,12 @@ const maxClients = 10
 
 var (
 	clients  = make(map[net.Conn]Client) // Stores connected clients
-	messages []string // Stores chat history
-	mutex    sync.Mutex  // Mutex to ensure safe concurrent access
+	messages []string                    // Stores chat history
+	mutex    sync.Mutex                  // Mutex to ensure safe concurrent access
 
 )
 
-func HandleClient(conn net.Conn) {
-	defer conn.Close()
-
+func Welcome(conn net.Conn) string {
 	// Greet client and prompt for name
 	// Send welcome message and get client name
 	welcomeMessage := "Welcome to TCP-Chat!\n" +
@@ -46,15 +44,34 @@ func HandleClient(conn net.Conn) {
 		"\\____   )MMMMMP|   .'\n" +
 		"     -'       --'\n"
 	conn.Write([]byte(welcomeMessage + "Welcome to TCP-Chat!\n[ENTER YOUR NAME]: "))
-	reader := bufio.NewReader(conn)
-	name, _ := reader.ReadString('\n')
-	name = strings.TrimSpace(name)
 
-	// Ensure a valid name
-	if name == "" {
-		conn.Write([]byte("Name cannot be empty.\n"))
-		return
+	reader := bufio.NewReader(conn)
+
+	for {
+		// Read the client's name input
+		name, _ := reader.ReadString('\n')
+		name = strings.TrimSpace(name)
+
+		// Ensure the name is not empty and is alphanumeric
+		if name == "" {
+			conn.Write([]byte("Name cannot be empty. Please enter a valid name:\n"))
+		} else if !isValidName(name) {
+			conn.Write([]byte("Name can only contain letters and numbers. Please try again:\n"))
+		} else if isNameTaken(name) {
+			conn.Write([]byte("This name is already taken. Please enter a different name:\n"))
+		} else {
+			
+			return name
+		}
+
+		// Prompt user to re-enter name
+		conn.Write([]byte("[ENTER YOUR NAME]: "))
 	}
+}
+func HandleClient(conn net.Conn) {
+	defer conn.Close()
+
+	name := Welcome(conn)
 
 	// Check if server is full
 	mutex.Lock()
@@ -76,7 +93,7 @@ func HandleClient(conn net.Conn) {
 	}
 
 	BroadcastMessage(join, conn)
-
+	reader := bufio.NewReader(conn)
 	// Listen for messages from this client
 	for {
 		conn.Write([]byte(fmt.Sprintf("[%s][%s]:", time.Now().Format("2006-01-02 15:04:05"), name)))
@@ -111,4 +128,23 @@ func BroadcastMessage(message string, exclude net.Conn) {
 			// Prompt the user again after a message
 		}
 	}
+}
+func isValidName(name string) bool {
+	for _, char := range name {
+		if !((char >= 'a' && char <= 'z') || (char >= 'A' && char <= 'Z') || (char >= '0' && char <= '9')) {
+			return false
+		}
+	}
+	return true
+}
+
+func isNameTaken(name string) bool {
+	mutex.Lock()
+	defer mutex.Unlock()
+	for _, client := range clients {
+		if client.username == name {
+			return true
+		}
+	}
+	return false
 }
