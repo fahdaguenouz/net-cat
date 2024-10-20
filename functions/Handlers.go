@@ -96,16 +96,20 @@ func HandleClient(conn net.Conn) {
 	reader := bufio.NewReader(conn)
 	// Listen for messages from this client
 	for {
-		conn.Write([]byte(fmt.Sprintf("[%s][%s]:", time.Now().Format("2006-01-02 15:04:05"), name)))
+		conn.Write([]byte(fmt.Sprintf("[%s][%s]:", time.Now().Format(time.DateTime), name)))
 		message, err := reader.ReadString('\n')
 		if err != nil {
 			break // Client disconnected
 		}
 
 		message = strings.TrimSpace(message)
-		if message != "" {
-			BroadcastMessage(fmt.Sprintf("[%s][%s]:%s", time.Now().Format("2006-01-02 15:04:05"), name, message), conn)
+		
+		if !isValidMessage(message) {
+			conn.Write([]byte("Message can only contain letters and numbers. Please try again:\n"))
+			continue
 		}
+			// Broadcast valid message
+		BroadcastMessage(fmt.Sprintf("[%s][%s]: %s", time.Now().Format(time.DateTime), name, message), conn)
 	}
 
 	// Notify others when the client leaves
@@ -147,4 +151,17 @@ func isNameTaken(name string) bool {
 		}
 	}
 	return false
+}
+
+// isValidMessage checks if a message contains only alphabetic characters and numbers
+func isValidMessage(message string) bool {
+	if message == "" {
+		return false
+	}
+	for _, char := range message {
+		if !((char >= 'a' && char <= 'z') || (char >= 'A' && char <= 'Z') || (char >= '0' && char <= '9') || char == ' ') {
+			return false
+		}
+	}
+	return true
 }
