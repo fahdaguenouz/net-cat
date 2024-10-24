@@ -43,7 +43,7 @@ func Welcome(conn net.Conn) string {
 		"_)      \\.___.,|     .'\n" +
 		"\\____   )MMMMMP|   .'\n" +
 		"     -'       --'\n"
-	conn.Write([]byte(welcomeMessage + "Welcome to TCP-Chat!\n[ENTER YOUR NAME]: "))
+	conn.Write([]byte(welcomeMessage + "[ENTER YOUR NAME]: "))
 
 	reader := bufio.NewReader(conn)
 
